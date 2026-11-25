@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#151c33" />
+<meta name="description" content="제이 스터디 카페 — 함께 공부하는 실시간 픽셀 스터디 카페" />
+<title>제이 스터디 카페 · 함께 공부하는 공간</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232f4fc9'/%3E%3Ctext x='16' y='22' font-size='15' font-family='sans-serif' font-weight='bold' fill='%23fff' text-anchor='middle'%3EPs%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+
+<!-- ================= 헤더 ================= -->
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-logo" aria-hidden="true">Ps</div>
+    <div class="brand-text">
+      <h1 id="cafeTitle">제이 스터디 카페</h1>
+      <p id="cafeSubtitle">함께 공부하는 공간</p>
+    </div>
+  </div>
+
+  <div class="topbar-actions">
+    <span id="connBadge" class="badge demo" title="연결 상태">
+      <i class="dot"></i><span id="connLabel">데모 모드</span>
+    </span>
+    <button id="btnCharacter" class="ghost-btn" type="button">캐릭터 변경</button>
+    <button id="btnGuide" class="ghost-btn" type="button">이용 안내</button>
+  </div>
+</header>
+
+<!-- ================= 본문 ================= -->
+<main class="layout">
+
+  <!-- 카페 화면 -->
+  <section class="map-card" aria-label="스터디 카페 화면">
+    <div class="map-frame">
+      <div class="map-head">
+        <span class="map-title"><i class="coffee-ico" aria-hidden="true">☕</i> 스터디 카페</span>
+        <span class="map-nav">커피 · 차 · 라떼</span>
+      </div>
+
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="game" width="1280" height="800" aria-label="스터디 카페 내부"></canvas>
+
+        <!-- 모바일 조작 -->
+        <div class="dpad" id="dpad" aria-label="이동 버튼">
+          <button type="button" data-dir="up" aria-label="위">▲</button>
+          <button type="button" data-dir="left" aria-label="왼쪽">◀</button>
+          <button type="button" data-dir="down" aria-label="아래">▼</button>
+          <button type="button" data-dir="right" aria-label="오른쪽">▶</button>
+        </div>
+        <button type="button" class="action-fab" id="actionFab"><b>F</b><span>상호작용</span></button>
+
+        <div class="canvas-hint" id="canvasHint">이동: WASD · 방향키 · 클릭</div>
+      </div>
+
+      <div class="map-foot">
+        <span class="foot-left" id="footHint">이동: WASD 또는 방향키</span>
+        <span class="foot-mid" id="footStudy">자리에 앉으면 공부 시간이 쌓여요</span>
+        <button type="button" class="key-chip" id="footAction"><b>F</b> 상호작용</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 사이드 패널 -->
+  <aside class="side">
+
+    <section class="panel" aria-label="공부 리더보드">
+      <div class="panel-head">
+        <h2><span class="ico">📚</span> 공부 리더보드</h2>
+        <span class="panel-count" id="liveCount">0명 참여</span>
+      </div>
+      <p class="panel-sub">자리에 앉아 공부한 시간</p>
+      <ul class="lb-list" id="leaderList"></ul>
+      <p class="lb-empty" id="lbEmpty">아직 아무도 없어요. 자리에 앉아 공부를 시작해 보세요!</p>
+    </section>
+
+    <section class="panel chat-panel" aria-label="전체 채팅">
+      <div class="panel-head">
+        <h2><span class="ico">💬</span> 전체 채팅</h2>
+        <span class="panel-count" id="chatMode">데모</span>
+      </div>
+      <div class="chat-feed" id="chatFeed" aria-live="polite"></div>
+      <div class="reactions" id="reactions"></div>
+      <form class="chat-form" id="chatForm" autocomplete="off">
+        <input id="chatInput" type="text" maxlength="160" placeholder="메시지 입력..." aria-label="메시지 입력" />
+        <button type="submit" aria-label="보내기">→</button>
+      </form>
+    </section>
+
+  </aside>
+  <footer class="site-foot">
+    <span class="foot-brand">제이 스터디 카페</span>
+    <span>함께 공부하는 공간</span>
+    <span class="foot-sep">·</span>
+    <span>F 로 앉기 · 키오스크에서 출석 기록 · 채팅으로 응원</span>
+  </footer>
+</main>
+
+<!-- ================= 입장 / 캐릭터 선택 모달 ================= -->
+<div class="modal-backdrop" id="entryModal" role="dialog" aria-modal="true" aria-labelledby="entryTitle">
+  <div class="modal entry-modal">
+    <div class="modal-body">
+      <h2 class="modal-title" id="entryTitle">캐릭터를 선택하세요</h2>
+      <p class="modal-sub">닉네임을 적고, 마음에 드는 캐릭터를 고르면 카페로 들어갑니다.</p>
+
+      <div class="field">
+        <label for="nickname">닉네임</label>
+        <input id="nickname" class="text-input" type="text" maxlength="12" placeholder="예: 하늘" />
+      </div>
+
+      <div class="char-grid" id="charGrid"></div>
+
+      <button type="button" class="primary-btn" id="btnEnter">카페 입장하기 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 키오스크 모달 ================= -->
+<div class="modal-backdrop" id="kioskModal" role="dialog" aria-modal="true" aria-labelledby="kioskTitle">
+  <div class="modal kiosk-modal">
+    <div class="kiosk-head">
+      <span id="kioskTitle">🪪 출석·퇴장 키오스크</span>
+      <button type="button" class="kiosk-close" id="kioskClose" aria-label="닫기">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="kiosk-desc">회차별로 출석·퇴장을 기록합니다. 버튼을 누르면 지금 시각이 저장돼요.</p>
+      <div class="kiosk-rows" id="kioskRows"></div>
+      <div class="kiosk-summary">
+        <span id="kioskSummary">오늘 출석 0회</span>
+        <span id="kioskSave">기록은 이 브라우저에 저장됩니다</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 이용 안내 모달 ================= -->
+<div class="modal-backdrop" id="guideModal" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+  <div class="modal guide-modal">
+    <div class="modal-body">
+      <h2 class="modal-title" id="guideTitle">이용 안내</h2>
+      <p class="modal-sub" id="guideWelcome">제이 스터디 카페에 오신 것을 환영합니다. 자리에 앉아 공부를 시작해 보세요.</p>
+
+      <div class="guide-grid">
+        <div class="guide-item"><span class="guide-ico">⌨️</span><div><b>이동</b><p>WASD 또는 방향키, 화면을 클릭해도 그쪽으로 걸어갑니다. 모바일은 왼쪽 아래 화살표 버튼을 쓰세요.</p></div></div>
+        <div class="guide-item"><span class="guide-ico">🪑</span><div><b>앉기 · 일어나기</b><p>의자 가까이 가면 <kbd>F</kbd> 프롬프트가 뜹니다. <kbd>F</kbd> 또는 오른쪽 아래 버튼으로 앉고 일어납니다.</p></div></div>
+        <div class="guide-item"><span class="guide-ico">⏱️</span><div><b>공부 시간</b><p>자리에 앉아 있는 동안에만 리더보드의 공부 시간이 올라갑니다. 일어나면 '자리 비움'이 됩니다.</p></div></div>
+        <div class="guide-item"><span class="guide-ico">🪪</span><div><b>출석·퇴장 키오스크</b><p>아래쪽 파란 화면 앞에서 <kbd>F</kbd>를 누르면 1~5회차 출석·퇴장을 기록할 수 있습니다.</p></div></div>
+        <div class="guide-item"><span class="guide-ico">💬</span><div><b>채팅과 응원</b><p>전체 채팅에 인사를 남기고 👏 🔥 💛 🎉 ☕ 로 짧게 응원해 보세요.</p></div></div>
+        <div class="guide-item"><span class="guide-ico">🌐</span><div><b>연결 방식</b><p id="guideMode">지금은 데모 모드입니다. config.js에 Supabase 주소와 키를 넣으면 여러 명이 실시간으로 함께 쓸 수 있어요.</p></div></div>
+      </div>
+
+      <div class="guide-zones">
+        <span class="zone-chip blue">파란 러그 · 함께 공부하는 공용 존</span>
+        <span class="zone-chip green">초록 러그 · 개인 집중 부스</span>
+        <span class="zone-chip purple">보라 러그 · 라운지</span>
+      </div>
+
+      <button type="button" class="primary-btn" id="guideClose">확인</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="config.js"></script>
+<script src="sprites.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
