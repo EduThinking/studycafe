@@ -876,6 +876,21 @@ kbd {
   .foot-mid { font-size: 9px; }
 }
 
+/* 작은 화면: 조작 버튼을 더 작게, 토스트는 채팅 입력창 위로 */
+@media (max-width: 760px) {
+  .dpad {
+    left: 8px;
+    bottom: 8px;
+    grid-template-columns: repeat(3, 28px);
+    grid-template-rows: repeat(2, 28px);
+    gap: 2px;
+  }
+  .dpad button { width: 28px; height: 28px; font-size: 10px; border-radius: 7px; }
+  .action-fab { right: 8px; bottom: 8px; padding: 7px 9px; font-size: 10px; border-radius: 9px; }
+  .action-fab b { width: 18px; height: 18px; font-size: 10px; border-radius: 5px; }
+  .toast { bottom: 84px; }
+}
+
 /* 스크롤바 */
 .chat-feed::-webkit-scrollbar, .lb-list::-webkit-scrollbar { width: 5px; }
 .chat-feed::-webkit-scrollbar-thumb, .lb-list::-webkit-scrollbar-thumb {
