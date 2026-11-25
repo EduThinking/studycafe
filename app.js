@@ -561,16 +561,17 @@
     ctx.globalAlpha = 1;
     var k = VIEW.k;
     var compact = k < 0.72;   // 좁은 화면: 이름표를 이름 위주로 간단히
+    var bounds = { w: VIEW.cssW, h: VIEW.cssH };
 
     /* 키오스크 표지판 */
-    S.drawKioskSign(ctx, { x: KIOSK.x + KIOSK.w / 2, y: KIOSK.y - 6, label: '출석·퇴장', k: k });
+    S.drawKioskSign(ctx, { x: KIOSK.x + KIOSK.w / 2, y: KIOSK.y - 6, label: '출석·퇴장', k: k, bounds: bounds });
 
     /* 프롬프트 */
     if (state.prompt && state.prompt.type === 'seat') {
       var seat = state.prompt.seat;
-      S.drawPrompt(ctx, { x: seat.x, y: seat.y - 32, label: '앉기', active: true, k: k });
+      S.drawPrompt(ctx, { x: seat.x, y: seat.y - 32, label: '앉기', active: true, k: k, bounds: bounds });
     } else if (state.prompt && state.prompt.type === 'kiosk') {
-      S.drawPrompt(ctx, { x: KIOSK.x + KIOSK.w / 2, y: KIOSK.y - 22, label: '출석·퇴장', active: true, k: k });
+      S.drawPrompt(ctx, { x: KIOSK.x + KIOSK.w / 2, y: KIOSK.y - 22, label: '출석·퇴장', active: true, k: k, bounds: bounds });
     }
 
     /* 이름표 (항상 맨 위) */
@@ -587,6 +588,7 @@
         x: p.x,
         y: topY,
         k: k,
+        bounds: bounds,
         compact: compact,
         name: p === me ? '나 · ' + p.name : p.name,
         status: p.studying ? '공부 중' : '자리 비움',

@@ -1025,6 +1025,12 @@ window.SPRITES = (function () {
     var ax = Math.round(o.x * k);
     var top = Math.round(o.y * k) - h;
     var left = Math.round(ax - w / 2);
+    /* 화면 밖으로 나가지 않게 살짝 안쪽으로 당긴다 */
+    if (o.bounds) {
+      left = clamp(left, 3, Math.max(3, o.bounds.w - w - 3));
+      if (top < 3) top = 3;
+      ax = clamp(ax, left + 9, left + w - 9);
+    }
     var border = self ? '#E3B954' : '#101731';
 
     pill(ctx, left, top, w, h, rad, border, self ? '#FCEFC0' : '#26325A');
@@ -1072,6 +1078,11 @@ window.SPRITES = (function () {
     var ax = Math.round(o.x * k);
     var top = Math.round(o.y * k) - h;
     var left = Math.round(ax - w / 2);
+    if (o.bounds) {
+      left = clamp(left, 3, Math.max(3, o.bounds.w - w - 3));
+      if (top < 3) top = 3;
+      ax = clamp(ax, left + 9, left + w - 9);
+    }
     var border = active ? '#E3B954' : '#1B2340';
 
     pill(ctx, left, top, w, h, rad, border, active ? '#FCE9A8' : '#242F52');
@@ -1113,6 +1124,10 @@ window.SPRITES = (function () {
     var w = Math.ceil(tw + padX * 2);
     var cx = Math.round(o.x * k);
     var top = Math.round(o.y * k) - h;
+    if (o.bounds) {
+      cx = clamp(cx, Math.round(w / 2) + 3, Math.max(Math.round(w / 2) + 3, o.bounds.w - Math.round(w / 2) - 3));
+      if (top < 3) top = 3;
+    }
 
     pill(ctx, Math.round(cx - w / 2), top, w, h, rad, '#0E1526', '#26325A');
 
