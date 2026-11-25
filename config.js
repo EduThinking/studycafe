@@ -28,8 +28,8 @@ window.CAFE_CONFIG = {
 
   /* ---------- Supabase (실시간 모드) ---------- */
   supabase: {
-    url: '',       // 예: 'https://abcdefghijkl.supabase.co'
-    anonKey: '',   // Supabase 프로젝트 설정 > API > anon public key
+    url: 'https://vblrewgzijqvivoydsxl.supabase.co',       // 예: 'https://abcdefghijkl.supabase.co'
+    anonKey: 'sb_publishable_Wilq2KM8vHJMytmF_gkHaA_3qH3bbPk',   // Supabase 프로젝트 설정 > API > anon public key
   },
 
   /* ---------- 움직임 ---------- */
