@@ -4,7 +4,7 @@
 설치나 빌드 없이 `index.html` 하나로 열리는 정적 웹앱이고, Supabase 키를 넣으면 여러 명이 실시간으로 함께 쓸 수 있습니다.
 그림은 전부 코드로 그립니다(이미지 파일 0개).
 
-🔗 라이브: <https://eduthinking.github.io/jey-study-cafe/>
+🔗 라이브: <https://eduthinking.github.io/studycafe/>
 
 ![제이 스터디 카페 미리보기](preview.png)
 
@@ -111,18 +111,26 @@ chat: { quickReactions: ['👏','🔥','💛','🎉','☕'] },
 
 ## 5. 배포
 
-### GitHub Pages
+### GitHub Pages (현재 배포 상태)
+- 저장소: <https://github.com/EduThinking/studycafe> (public)
+- 라이브: <https://eduthinking.github.io/studycafe/>
+- GitHub Pages 의 배포 소스는 지금 **`gh-pages` 브랜치 / (root)** 로 설정되어 있습니다.
+  `gh-pages` 는 `main` 과 같은 내용입니다.
+- `main` 을 소스로 쓰고 싶다면 저장소 → **Settings → Pages → Source: Deploy from a branch →
+  Branch: `main` / `(root)` → Save** 로 바꾸면 됩니다. 그 뒤로는 `main` 만 고쳐도 자동 배포됩니다.
+- 소스를 `gh-pages` 로 두는 동안에는 **고칠 때 `main` 과 `gh-pages` 두 브랜치에 함께 올려야** 사이트에 반영됩니다.
+
+새 저장소에 처음 올리는 경우:
+
 ```bash
-# 저장소 루트에 이 폴더의 파일들이 오도록 올립니다
 git init
 git add .
 git commit -m "제이 스터디 카페"
 git branch -M main
-git remote add origin https://github.com/<사용자>/jey-study-cafe.git
+git remote add origin https://github.com/<사용자>/<저장소>.git
 git push -u origin main
+# Pages 소스를 main 으로 켜면 https://<사용자>.github.io/<저장소>/ 에서 열립니다
 ```
-저장소 → **Settings → Pages → Source: Deploy from a branch → Branch: `main` / `(root)`** 를 선택하면
-`https://<사용자>.github.io/jey-study-cafe/` 에서 열립니다.
 
 > 실시간 모드를 쓸 때는 Supabase 대시보드 **Authentication → URL Configuration** 의 Site URL / Redirect URL 에
 > 배포 주소를 추가해 두세요.
