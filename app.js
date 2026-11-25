@@ -207,23 +207,65 @@
   var MY_ID = 'u-' + Math.random().toString(36).slice(2, 9);
 
   /* =============================================================
-   *  3. 캔버스 / 배경 캐시
+   *  3. 캔버스 / 렌더 해상도 (HiDPI 선명 렌더링)
+   *  - 백킹 스토어를 CSS 크기 × devicePixelRatio 로 맞춰 기기 픽셀에
+   *    1:1로 그린다 → 픽셀이 늘어나 지글거리거나 뭉개지지 않는다.
+   *  - 그림은 논리 좌표(640×400), 글자는 CSS 픽셀 좌표로 그린다.
    * ============================================================= */
   var canvas = $('game');
-  var ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
+  var ctx = canvas.getContext('2d', { alpha: false });
+
+  var VIEW = {
+    dpr: 1,
+    cssW: 640, cssH: 400,   // 화면에 보이는 CSS 크기
+    w: 640, h: 400,         // 백킹 스토어 크기(기기 픽셀)
+    s: 1,                   // 기기 픽셀 / 논리 픽셀
+    k: 1                    // CSS 픽셀 / 논리 픽셀
+  };
 
   var bgCanvas = document.createElement('canvas');
-  bgCanvas.width = MAP.w * 2;
-  bgCanvas.height = MAP.h * 2;
   var bgCtx = bgCanvas.getContext('2d');
-  bgCtx.setTransform(2, 0, 0, 2, 0, 0);
-  S.drawBackground(bgCtx, MAP);
+  var bgKey = '';
+
+  function syncView() {
+    var rect = canvas.getBoundingClientRect();
+    var cssW = Math.max(200, Math.round(rect.width || MAP.w));
+    var dpr = Math.min(Math.max(window.devicePixelRatio || 1, 1), 3);
+    var w = Math.round(cssW * dpr);
+    var h = Math.round(w * MAP.h / MAP.w);
+
+    VIEW.dpr = dpr;
+    VIEW.cssW = cssW;
+    VIEW.cssH = Math.round(cssW * MAP.h / MAP.w);
+    VIEW.w = w;
+    VIEW.h = h;
+    VIEW.s = w / MAP.w;
+    VIEW.k = cssW / MAP.w;
+
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    ctx.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+
+    var key = w + 'x' + h;
+    if (key !== bgKey) {
+      bgKey = key;
+      bgCanvas.width = w;
+      bgCanvas.height = h;
+      bgCtx.setTransform(VIEW.s, 0, 0, VIEW.s, 0, 0);
+      if ('imageSmoothingQuality' in bgCtx) bgCtx.imageSmoothingQuality = 'high';
+      S.drawBackground(bgCtx, MAP);
+    }
+  }
 
   function paint() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.imageSmoothingEnabled = true;
     ctx.drawImage(bgCanvas, 0, 0);
-    ctx.setTransform(2, 0, 0, 2, 0, 0);
+    ctx.setTransform(VIEW.s, 0, 0, VIEW.s, 0, 0);
   }
 
   /* =============================================================
@@ -509,15 +551,30 @@
       }
     }
 
+    drawOverlay();
+  }
+
+  /* 이름표 · 프롬프트 · 표지판 · 리액션 — CSS 픽셀 좌표계(HiDPI)로 그리는 패스 */
+  function drawOverlay() {
+    ctx.setTransform(VIEW.dpr, 0, 0, VIEW.dpr, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.globalAlpha = 1;
+    var k = VIEW.k;
+    var compact = k < 0.72;   // 좁은 화면: 이름표를 이름 위주로 간단히
+
+    /* 키오스크 표지판 */
+    S.drawKioskSign(ctx, { x: KIOSK.x + KIOSK.w / 2, y: KIOSK.y - 6, label: '출석·퇴장', k: k });
+
     /* 프롬프트 */
     if (state.prompt && state.prompt.type === 'seat') {
       var seat = state.prompt.seat;
-      S.drawPrompt(ctx, { x: seat.x, y: seat.y - 30, label: '앉기', active: true });
+      S.drawPrompt(ctx, { x: seat.x, y: seat.y - 32, label: '앉기', active: true, k: k });
     } else if (state.prompt && state.prompt.type === 'kiosk') {
-      S.drawPrompt(ctx, { x: KIOSK.x + KIOSK.w / 2, y: KIOSK.y - 22, label: '출석·퇴장', active: true });
+      S.drawPrompt(ctx, { x: KIOSK.x + KIOSK.w / 2, y: KIOSK.y - 22, label: '출석·퇴장', active: true, k: k });
     }
 
     /* 이름표 (항상 맨 위) */
+    var me = state.me;
     var all = [];
     if (me) all.push(me);
     Object.keys(state.players).forEach(function (id) { all.push(state.players[id]); });
@@ -529,6 +586,8 @@
       S.drawNameTag(ctx, {
         x: p.x,
         y: topY,
+        k: k,
+        compact: compact,
         name: p === me ? '나 · ' + p.name : p.name,
         status: p.studying ? '공부 중' : '자리 비움',
         studying: p.studying,
@@ -540,7 +599,7 @@
     state.reactions.forEach(function (r) {
       var owner = r.playerId === MY_ID ? me : (state.players[r.playerId] || state.bots.filter(function (b) { return b.id === r.playerId; })[0]);
       if (!owner) return;
-      S.drawReaction(ctx, owner.x, owner.y, r.emoji, r.t);
+      S.drawReaction(ctx, owner.x, owner.y, r.emoji, r.t, k);
     });
   }
 
@@ -582,6 +641,7 @@
     uiAccum += dt;
     if (uiAccum > 0.5) {
       uiAccum = 0;
+      syncView();            // 창 크기·배율(dpr) 변화에 맞춰 다시 맞춘다
       renderLeaderboard();
       updateFootStatus();
     }
@@ -979,10 +1039,13 @@
       card.dataset.id = c.id;
 
       var cv = document.createElement('canvas');
-      cv.width = 132;
-      cv.height = 168;
+      var cdpr = Math.min(Math.max(window.devicePixelRatio || 1, 1), 3);
+      cv.width = Math.round(44 * cdpr);
+      cv.height = Math.round(56 * cdpr);
       var g = cv.getContext('2d');
-      g.setTransform(3, 0, 0, 3, 0, 0);
+      var cscale = cv.width / 44;
+      g.setTransform(cscale, 0, 0, cscale, 0, 0);
+      if ('imageSmoothingQuality' in g) g.imageSmoothingQuality = 'high';
       S.drawCharacter(g, c, { x: 22, y: 50, dir: 'down' });
 
       var label = document.createElement('span');
@@ -1610,10 +1673,29 @@
     buildNav();
     state.attendance = loadAttendance();
 
+    syncView();
     renderLeaderboard();
     initLive();
     openEntry();
     requestAnimationFrame(loop);
+  }
+
+  /* 창 크기·확대/축소·회전: 다음 프레임 전에 해상도를 다시 맞춘다 */
+  var resizeTimer = null;
+  function onViewportChange() {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () { resizeTimer = null; syncView(); }, 90);
+  }
+  window.addEventListener('resize', onViewportChange);
+  window.addEventListener('orientationchange', onViewportChange);
+  if (window.matchMedia) {
+    var watchDpr = function () {
+      var mq = window.matchMedia('(resolution: ' + (window.devicePixelRatio || 1) + 'dppx)');
+      var onChange = function () { syncView(); watchDpr(); };
+      if (mq.addEventListener) mq.addEventListener('change', onChange, { once: true });
+      else if (mq.addListener) mq.addListener(onChange);
+    };
+    watchDpr();
   }
 
   boot();

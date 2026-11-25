@@ -53,6 +53,8 @@ body {
   font-size: 13px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -227,8 +229,7 @@ kbd {
   width: 100%;
   height: auto;
   aspect-ratio: 8 / 5;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
+  background: #0d1220;
   cursor: pointer;
 }
 
@@ -720,8 +721,6 @@ kbd {
 .char-card canvas {
   width: 44px;
   height: 56px;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
   display: block;
 }
 .char-card span {

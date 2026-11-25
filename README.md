@@ -145,7 +145,7 @@ Netlify, Vercel, Cloudflare Pages 등에 `study-cafe/` 폴더를 그대로 올�
 
 ## 6. 참고
 
-- **캔버스 해상도**: 논리 좌표 640×400을 2배(1280×800)로 그린 뒤 CSS로 확대합니다. `image-rendering: pixelated` 로 픽셀을 살립니다.
+- **캔버스 해상도**: 논리 좌표 640×400을 화면 크기 × devicePixelRatio 해상도로 그립니다(HiDPI). 그림은 기기 픽셀에 1:1로, 이름표·프롬프트·표지판 글자는 CSS 픽셀 기준으로 따로 그려 어떤 화면에서도 또렷합니다.
 - **글꼴**: 별도 웹폰트를 받지 않고 시스템 한글 글꼴(Pretendard → Apple SD Gothic Neo → Noto Sans KR → Malgun Gothic)을 씁니다.
 - **모바일**: 좁은 화면에서는 사이드 패널이 아래로 내려가고, 캔버스 위에 방향 버튼과 `F` 버튼이 나타납니다.
 - **접근성**: 모달은 `role="dialog"`, 채팅은 `aria-live`, `prefers-reduced-motion` 을 존중합니다.

@@ -612,22 +612,7 @@ window.SPRITES = (function () {
     rect(ctx, x + 6, y + 22, 9, 2, '#F3D27A');
     rect(ctx, x + w - 10, y + 25, 6, 3, '#43507A');
 
-    /* 표지판 */
-    var label = o.label || '출석·퇴장';
-    ctx.font = '700 8px "Pretendard","Noto Sans KR",sans-serif';
-    var tw = ctx.measureText(label).width;
-    var lw = Math.ceil(tw) + 12, lh = 13;
-    var lx = Math.round(x + w / 2 - lw / 2), ly = Math.round(y - lh - 5);
-    ctx.globalAlpha = 0.25;
-    rect(ctx, lx + 1, ly + 2, lw, lh, '#000000');
-    ctx.globalAlpha = 1;
-    rect(ctx, lx, ly, lw, lh, '#141B31');
-    rect(ctx, lx + 1, ly + 1, lw - 2, lh - 2, '#232E52');
-    ctx.fillStyle = '#EAF0FF';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(label, lx + lw / 2, ly + lh / 2 + 0.5);
-    ctx.textAlign = 'left';
+    /* 표지판 글자는 drawKioskSign()에서 HiDPI 텍스트 패스로 그린다 */
   }
 
   function drawCounter(ctx, o) {
@@ -962,98 +947,198 @@ window.SPRITES = (function () {
   }
 
   /* =============================================================
-   *  이름표 · 프롬프트 · 리액션
+   *  이름표 · 프롬프트 · 표지판 · 리액션 (HiDPI 텍스트 패스)
+   *  - 좌표(o.x, o.y)는 논리 픽셀, o.k = CSS 픽셀 / 논리 픽셀
+   *  - 호출 전에 ctx 변환을 CSS 픽셀 좌표계(dpr 배율)로 맞춰 둔다
+   *    → 글자는 화면 해상도 그대로 그려져 또렷하다
    * ============================================================= */
-  var TAG_FONT = '700 7.5px "Pretendard","Noto Sans KR","Malgun Gothic",sans-serif';
-  var TAG_FONT_SM = '600 6.5px "Pretendard","Noto Sans KR","Malgun Gothic",sans-serif';
+  var FONT_UI = '"Pretendard","Pretendard Variable","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",sans-serif';
+  var FONT_MONO = 'ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace';
 
-  function drawNameTag(ctx, o) {
-    var self = !!o.self;
-    var statusText = o.status || (o.studying ? '공부 중' : '자리 비움');
-    ctx.textBaseline = 'middle';
-    ctx.textAlign = 'left';
+  function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-    ctx.font = TAG_FONT;
-    var nameW = ctx.measureText(o.name).width;
-    ctx.font = TAG_FONT_SM;
-    var stW = ctx.measureText('· ' + statusText).width;
-
-    var w = Math.ceil(10 + nameW + 3 + stW + 7);
-    var h = 13;
-    var bx = Math.round(o.x - w / 2);
-    var by = Math.round(o.y - h);
-
-    ctx.globalAlpha = 0.24;
-    roundTag(ctx, bx + 1, by + 2, w, h, '#000000');
-    ctx.globalAlpha = 1;
-
-    roundTag(ctx, bx, by, w, h, self ? '#E3B954' : '#141B31');
-    roundTag(ctx, bx + 1, by + 1, w - 2, h - 2, self ? '#FBEBB4' : '#232E52');
-
-    rect(ctx, bx + 3, by + 5, 3, 3, o.studying ? '#63D68C' : '#F0C36B');
-
-    ctx.font = TAG_FONT;
-    ctx.fillStyle = self ? '#2A2130' : '#EDF2FF';
-    ctx.fillText(o.name, bx + 8, by + h / 2 + 0.5);
-
-    ctx.font = TAG_FONT_SM;
-    ctx.fillStyle = self ? '#8A6A25' : '#97A5C4';
-    ctx.fillText('· ' + statusText, bx + 8 + nameW + 3, by + h / 2 + 1);
-
-    /* 꼬리 */
-    rect(ctx, Math.round(o.x) - 2, by + h, 4, 2, self ? '#E3B954' : '#141B31');
-    rect(ctx, Math.round(o.x) - 1, by + h, 2, 2, self ? '#FBEBB4' : '#232E52');
+  function pillPath(ctx, x, y, w, h, r) {
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
   }
 
-  function roundTag(ctx, x, y, w, h, color) {
-    rect(ctx, x + 1, y, w - 2, h, color);
-    rect(ctx, x, y + 1, w, h - 2, color);
+  function pill(ctx, x, y, w, h, r, border, body) {
+    ctx.save();
+    ctx.shadowColor = 'rgba(6, 10, 22, 0.42)';
+    ctx.shadowBlur = Math.max(3, h * 0.36);
+    ctx.shadowOffsetY = Math.max(1, h * 0.1);
+    pillPath(ctx, x, y, w, h, r);
+    ctx.fillStyle = border;
+    ctx.fill();
+    ctx.restore();
+    pillPath(ctx, x + 1, y + 1, w - 2, h - 2, Math.max(1, r - 1));
+    ctx.fillStyle = body;
+    ctx.fill();
+  }
+
+  function pointer(ctx, x, y, halfW, h, color) {
+    ctx.beginPath();
+    ctx.moveTo(x - halfW, y - 1);
+    ctx.lineTo(x + halfW, y - 1);
+    ctx.lineTo(x, y + h);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  function drawNameTag(ctx, o) {
+    var k = o.k || 1;
+    var self = !!o.self;
+    var statusText = o.status || (o.studying ? '공부 중' : '자리 비움');
+    var size = clamp(7.7 * k, 9, 11.5);
+    var sizeSm = clamp(size * 0.86, 7.8, 10.2);
+    var showStatus = o.compact ? false : true;
+    var fontMain = '700 ' + size.toFixed(2) + 'px ' + FONT_UI;
+    var fontSm = '600 ' + sizeSm.toFixed(2) + 'px ' + FONT_UI;
+
+    ctx.save();
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.font = fontMain;
+    var nameW = ctx.measureText(o.name).width;
+    ctx.font = fontSm;
+    var statusTxt = '· ' + statusText;
+    var statusW = showStatus ? ctx.measureText(statusTxt).width : 0;
+
+    var padX = Math.round(size * 0.55);
+    var dot = Math.max(4, Math.round(size * 0.3));
+    var gap = Math.round(size * 0.34);
+    var h = Math.round(size * 1.66);
+    var rad = Math.round(h * 0.42);
+    var w = Math.ceil(padX * 2 + dot + gap + nameW + (showStatus ? 4 + statusW : 0));
+
+    var ax = Math.round(o.x * k);
+    var top = Math.round(o.y * k) - h;
+    var left = Math.round(ax - w / 2);
+    var border = self ? '#E3B954' : '#101731';
+
+    pill(ctx, left, top, w, h, rad, border, self ? '#FCEFC0' : '#26325A');
+
+    var cy = top + h / 2;
+    ctx.beginPath();
+    ctx.arc(left + padX + dot / 2, cy, dot / 2, 0, Math.PI * 2);
+    ctx.fillStyle = o.studying ? '#4AC97A' : '#E8AF52';
+    ctx.fill();
+
+    var tx = left + padX + dot + gap;
+    ctx.font = fontMain;
+    ctx.fillStyle = self ? '#3B2B12' : '#F4F8FF';
+    ctx.fillText(o.name, tx, cy + 0.5);
+
+    if (showStatus) {
+      ctx.font = fontSm;
+      ctx.fillStyle = self ? '#8B6A22' : '#A9B8D8';
+      ctx.fillText(statusTxt, tx + nameW + 4, cy + 0.5);
+    }
+
+    pointer(ctx, ax, top + h, Math.max(2, Math.round(size * 0.32)), Math.max(3, Math.round(size * 0.34)), border);
+    ctx.restore();
   }
 
   function drawPrompt(ctx, o) {
-    var label = o.label;
-    ctx.font = '700 8px "Pretendard","Noto Sans KR",sans-serif';
-    var tw = ctx.measureText(label).width;
-    var w = Math.ceil(tw) + 24;
-    var h = 15;
-    var bx = Math.round(o.x - w / 2);
-    var by = Math.round(o.y - h);
+    var k = o.k || 1;
     var active = o.active !== false;
+    var label = o.label || '';
+    var size = clamp(7.9 * k, 9, 11.5);
+    var font = '700 ' + size.toFixed(2) + 'px ' + FONT_UI;
 
-    ctx.globalAlpha = 0.25;
-    roundTag(ctx, bx + 1, by + 2, w, h, '#000000');
-    ctx.globalAlpha = 1;
-
-    roundTag(ctx, bx, by, w, h, active ? '#E3B954' : '#1B2340');
-    roundTag(ctx, bx + 1, by + 1, w - 2, h - 2, active ? '#FCE9A8' : '#242F52');
-
-    rect(ctx, bx + 4, by + 4, 9, 8, active ? '#2A2130' : '#3D4A6E');
-    ctx.fillStyle = active ? '#FCE9A8' : '#DCE4F7';
-    ctx.font = '700 6px ui-monospace,monospace';
-    ctx.textAlign = 'center';
+    ctx.save();
     ctx.textBaseline = 'middle';
-    ctx.fillText('F', bx + 8.5, by + 8.5);
+    ctx.font = font;
+    var tw = ctx.measureText(label).width;
 
-    ctx.font = '700 8px "Pretendard","Noto Sans KR",sans-serif';
+    var key = Math.round(size * 1.4);
+    var padX = Math.round(size * 0.5);
+    var gap = Math.round(size * 0.36);
+    var h = Math.round(size * 1.86);
+    var rad = Math.round(h * 0.42);
+    var w = Math.ceil(padX * 2 + key + gap + tw);
+
+    var ax = Math.round(o.x * k);
+    var top = Math.round(o.y * k) - h;
+    var left = Math.round(ax - w / 2);
+    var border = active ? '#E3B954' : '#1B2340';
+
+    pill(ctx, left, top, w, h, rad, border, active ? '#FCE9A8' : '#242F52');
+
+    var ky = Math.round(top + (h - key) / 2);
+    pillPath(ctx, left + padX, ky, key, key, Math.max(2, Math.round(key * 0.3)));
+    ctx.fillStyle = active ? '#2A2130' : '#3D4A6E';
+    ctx.fill();
+
+    ctx.font = '700 ' + (size * 0.84).toFixed(2) + 'px ' + FONT_MONO;
+    ctx.fillStyle = active ? '#FCE9A8' : '#DCE4F7';
+    ctx.textAlign = 'center';
+    ctx.fillText('F', left + padX + key / 2, top + h / 2 + 0.5);
+
+    ctx.font = font;
+    ctx.textAlign = 'left';
     ctx.fillStyle = active ? '#2A2130' : '#E7EDFB';
-    ctx.textAlign = 'left';
-    ctx.fillText(label, bx + 16, by + h / 2 + 0.5);
+    ctx.fillText(label, left + padX + key + gap, top + h / 2 + 0.5);
 
-    rect(ctx, Math.round(o.x) - 2, by + h, 4, 2, active ? '#E3B954' : '#1B2340');
-    ctx.textAlign = 'left';
+    pointer(ctx, ax, top + h, Math.max(2, Math.round(size * 0.3)), Math.max(3, Math.round(size * 0.3)), border);
+    ctx.restore();
   }
 
-  function drawReaction(ctx, x, y, emoji, progress) {
+  function drawKioskSign(ctx, o) {
+    var k = o.k || 1;
+    var label = o.label || '출석·퇴장';
+    var size = clamp(7.6 * k, 8.5, 11);
+    var font = '700 ' + size.toFixed(2) + 'px ' + FONT_UI;
+
+    ctx.save();
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    ctx.font = font;
+    var tw = ctx.measureText(label).width;
+
+    var padX = Math.round(size * 0.85);
+    var h = Math.round(size * 1.72);
+    var rad = Math.round(h * 0.32);
+    var w = Math.ceil(tw + padX * 2);
+    var cx = Math.round(o.x * k);
+    var top = Math.round(o.y * k) - h;
+
+    pill(ctx, Math.round(cx - w / 2), top, w, h, rad, '#0E1526', '#26325A');
+
+    ctx.fillStyle = '#EAF0FF';
+    ctx.fillText(label, cx, top + h / 2 + 0.5);
+
+    /* 화면 위 작은 표시등 */
+    ctx.beginPath();
+    ctx.arc(cx, top + h + 3, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(120, 226, 236, 0.9)';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawReaction(ctx, x, y, emoji, progress, k) {
+    k = k || 1;
     var p = Math.max(0, Math.min(1, progress));
     var alpha = p < 0.72 ? 1 : (1 - (p - 0.72) / 0.28);
-    var rise = p * 24;
+    var size = clamp(15 * k, 15, 22);
+    ctx.save();
     ctx.globalAlpha = Math.max(0, alpha);
-    ctx.font = '15px "Apple Color Emoji","Noto Color Emoji","Segoe UI Emoji",sans-serif';
+    ctx.font = size.toFixed(1) + 'px "Apple Color Emoji","Noto Color Emoji","Segoe UI Emoji",sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(emoji, x, y - 34 - rise);
-    ctx.textAlign = 'left';
-    ctx.globalAlpha = 1;
+    ctx.fillText(emoji, Math.round(x * k), Math.round((y - 30) * k - p * 26 * k));
+    ctx.restore();
   }
 
   return {
@@ -1065,6 +1150,7 @@ window.SPRITES = (function () {
     drawCharacter: drawCharacter,
     drawNameTag: drawNameTag,
     drawPrompt: drawPrompt,
+    drawKioskSign: drawKioskSign,
     drawReaction: drawReaction
   };
 })();
