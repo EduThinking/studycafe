@@ -4,7 +4,7 @@
 설치나 빌드 없이 `index.html` 하나로 열리는 정적 웹앱이고, Supabase 키를 넣으면 여러 명이 실시간으로 함께 쓸 수 있습니다.
 그림은 전부 코드로 그립니다(이미지 파일 0개).
 
-🔗 라이브: <https://eduthinking.github.io/studycafe/>
+🔗 라이브: <https://eduthinking.github.io/studycafe/> — Supabase 실시간 프로젝트(`vblrewgzijqvivoydsxl`)에 연결되어 배포 중입니다.
 
 ![제이 스터디 카페 미리보기](preview.png)
 
@@ -69,7 +69,7 @@ python3 -m http.server 8080
 
 ### 실시간 모드 (Supabase)
 1. <https://supabase.com> 에서 새 프로젝트를 만듭니다.
-2. **SQL Editor** 에 `supabase-schema.sql` 전체를 붙여넣고 실행합니다.
+2. **SQL Editor** 에 `supabase-schema.sql` 전체를 붙여넣고 실행합니다(테이블 · RLS 정책 · anon 권한까지 한 번에).
 3. **Project Settings → API** 에서 `Project URL` 과 `anon public` 키를 복사해 `config.js`에 넣습니다.
 
 ```js
@@ -82,13 +82,16 @@ supabase: {
 4. 페이지를 새로고침하면 헤더 배지가 **실시간 연결**(초록 점)로 바뀝니다.
 
 동작 방식
-- **Presence**: 참가자의 닉네임·캐릭터·좌표·앉은 자리·공부 시간을 2.5초마다 공유해 서로의 캐릭터가 같은 화면에 보입니다.
-- **Broadcast**: 채팅과 이모지 반응을 즉시 전달합니다.
+- **Presence**: 참가자의 닉네임·캐릭터·앉은 자리·공부 시간을 공유해 서로의 캐릭터가 같은 화면에 보입니다.
+- **Broadcast**: 위치·이름·캐릭터 변화를 2.5초마다, 채팅과 이모지 반응은 즉시 전달합니다.
+- Supabase Realtime 은 한 채널에서 30초에 presence(track) 5회까지만 허용하므로, 잦은 위치 갱신은 Broadcast 로 보내고 Presence 는 8초에 한 번만 갱신합니다. (이 제한을 넘기면 `Client presence rate limit exceeded` 로 채널이 끊깁니다.)
 - **Postgres**: `chat_messages`(최근 24개를 입장 시 불러옴), `attendance_logs`(키오스크 기록)에 저장합니다.
 - 연결에 실패하면 알림을 띄우고 자동으로 데모 모드로 넘어갑니다.
 
-> `anon` 키는 공개되어도 되는 키입니다. 쓰기 권한은 위 스키마의 RLS 정책으로 insert/select만 열어 두었습니다.
+> `anon` 키는 공개되어도 되는 키입니다. 쓰기 권한은 위 스키마의 RLS 정책과 GRANT 로 insert/select 만 열어 두었습니다.
 > 닉네임만 쓰는 가벼운 카페이므로 **로그인·비밀번호는 없습니다.** 사적인 대화는 남기지 마세요.
+>
+> `401 permission denied for table ...` 이 보이면 SQL Editor 에서 `supabase-schema.sql` 을 다시 실행하세요. 테이블은 그대로 두고 RLS 정책과 anon 권한만 다시 채웁니다.
 
 ---
 

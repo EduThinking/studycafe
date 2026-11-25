@@ -122,17 +122,29 @@
 <!-- ================= 입장 / 캐릭터 선택 모달 ================= -->
 <div class="modal-backdrop" id="entryModal" role="dialog" aria-modal="true" aria-labelledby="entryTitle">
   <div class="modal entry-modal">
-    <div class="modal-body">
-      <h2 class="modal-title" id="entryTitle">캐릭터를 선택하세요</h2>
-      <p class="modal-sub">닉네임을 적고, 마음에 드는 캐릭터를 고르면 카페로 들어갑니다.</p>
-
-      <div class="field">
-        <label for="nickname">닉네임</label>
-        <input id="nickname" class="text-input" type="text" maxlength="12" placeholder="예: 하늘" />
+    <div class="entry-head">
+      <div class="entry-head-top">
+        <h2 class="modal-title" id="entryTitle">캐릭터를 선택하세요</h2>
+        <button type="button" class="entry-close" id="entryClose" aria-label="닫기" hidden>✕</button>
       </div>
+      <p class="modal-sub" id="entrySub">내 이름을 적고, 마음에 드는 캐릭터를 고르면 카페로 들어갑니다.</p>
 
+      <div class="field name-field">
+        <label for="nickname">내 이름 <span class="label-note">(닉네임)</span></label>
+        <div class="name-input-wrap">
+          <input id="nickname" class="text-input name-input" type="text" maxlength="12"
+                 placeholder="예: 은영" autocomplete="nickname" enterkeyhint="done" />
+          <button type="button" class="name-clear" id="nicknameClear" aria-label="이름 지우기" hidden>✕</button>
+        </div>
+        <p class="name-hint" id="nameHint">다른 사람에게 이 이름으로 보여요 · 최대 12자</p>
+      </div>
+    </div>
+
+    <div class="modal-body entry-body">
       <div class="char-grid" id="charGrid"></div>
+    </div>
 
+    <div class="entry-foot">
       <button type="button" class="primary-btn" id="btnEnter">카페 입장하기 →</button>
     </div>
   </div>

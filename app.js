@@ -453,7 +453,7 @@
     e.x = seat.x;
     e.y = seat.y;
     e.dir = seat.face;
-    if (e === state.me) syncPresence();
+    if (e === state.me) { publishMove(); syncPresence(); }
     return true;
   }
 
@@ -468,7 +468,7 @@
     e.studying = false;
     e.seatId = null;
     e.dir = 'down';
-    if (e === state.me) syncPresence();
+    if (e === state.me) { publishMove(); syncPresence(); }
   }
 
   function freeSeats(zone) {
@@ -589,7 +589,10 @@
     presenceAccum += dt;
     if (presenceAccum > 2.5) {
       presenceAccum = 0;
-      if (state.mode === 'live') syncPresence();
+      if (state.mode === 'live') {
+        publishMove();
+        syncPresence();
+      }
     }
 
     render();
@@ -1006,46 +1009,83 @@
       savedChar = raw.charId || savedChar;
     } catch (e) { /* ignore */ }
 
-    state.pickedChar = state.me ? state.me.charId : savedChar;
-    $('nickname').value = state.me ? state.me.name : savedName;
+    var returning = !!state.me;
+    state.pickedChar = returning ? state.me.charId : savedChar;
+
+    var nick = $('nickname');
+    nick.value = returning ? state.me.name : savedName;
+    $('entryTitle').textContent = returning ? '캐릭터 변경' : '캐릭터를 선택하세요';
+    $('entrySub').textContent = returning
+      ? '내 이름과 캐릭터를 바꾸면 카페에 바로 반영됩니다.'
+      : '내 이름을 적고, 마음에 드는 캐릭터를 고르면 카페로 들어갑니다.';
+    $('btnEnter').textContent = returning ? '적용하기' : '카페 입장하기 →';
+    $('entryClose').hidden = !returning;
+    syncNameClear();
+    setNameHint(false);
+
     buildCharGrid(state.pickedChar);
     openModal('entryModal');
-    setTimeout(function () { $('nickname').focus(); }, 120);
+    setTimeout(function () { nick.focus(); nick.select(); }, 120);
+  }
+
+  /* 이름 칸의 지우기(✕) 버튼 상태 */
+  function syncNameClear() {
+    var nick = $('nickname');
+    var clear = $('nicknameClear');
+    if (!nick || !clear) return;
+    clear.hidden = !nick.value;
+  }
+
+  function setNameHint(warned) {
+    var hint = $('nameHint');
+    if (!hint) return;
+    hint.textContent = warned
+      ? '이름을 먼저 적어 주세요'
+      : '다른 사람에게 이 이름으로 보여요 · 최대 12자';
+    hint.classList.toggle('warn', !!warned);
   }
 
   function enterCafe() {
-    var name = ($('nickname').value || '').trim().slice(0, 12);
+    var name = ($('nickname').value || '').replace(/\s+/g, ' ').trim().slice(0, 12);
     if (!name) {
-      name = charOf(state.pickedChar).name;
-      $('nickname').value = name;
+      setNameHint(true);
+      $('nickname').focus();
+      return;
     }
+    setNameHint(false);
     var charId = state.pickedChar || (charDefs[0] && charDefs[0].id);
 
     try { localStorage.setItem('jey-study-cafe:profile', JSON.stringify({ name: name, charId: charId })); } catch (e) { }
 
+    var renamed = false;
     if (!state.me) {
       state.me = {
         id: MY_ID, name: name, charId: charId,
         x: 320, y: 300, dir: 'down', moving: false, animT: 0,
-        sitting: false, studying: false, seatId: null, seconds: 0, path: null
+        sitting: false, studying: false, seatId: null, seconds: 0, path: null, ts: Date.now()
       };
       state.started = true;
       state.attendance = loadAttendance();
       addSystem(name + '님이 입장했습니다');
-      syncPresence();
+      syncPresence(true);
       $('canvasHint').classList.add('hide');
     } else {
       var oldName = state.me.name;
+      renamed = oldName !== name;
       state.me.name = name;
       state.me.charId = charId;
+      state.me.ts = Date.now();
+      /* 이름·캐릭터를 바꾸면 이름표·리더보드에 바로 보이도록 즉시 알린다 */
+      publishMove();
       syncPresence();
-      if (oldName !== name) addSystem(oldName + '님이 이름을 ' + name + '(으)로 바꿨습니다');
+      if (renamed) addSystem(oldName + '님이 이름을 ' + name + '(으)로 바꿨습니다');
     }
 
     closeModal('entryModal');
     renderLeaderboard();
     updateFootStatus();
-    toast(name + '님, 어서 오세요!');
+    render();
+    toast(renamed ? name + '(으)로 이름을 바꿨습니다' : name + '님, 어서 오세요!');
   }
 
   function addSystem(text) {
@@ -1211,10 +1251,29 @@
     };
   }
 
-  function syncPresence() {
+  /* Supabase Realtime 은 한 채널에서 30초에 presence(track) 5회까지만 허용하고,
+     넘으면 'Client presence rate limit exceeded' 로 채널을 닫습니다.
+     그래서 잦은 위치 갱신은 broadcast('move')로 보내고, presence 는 8초에 한 번만
+     (30초에 최대 3~4회) 갱신합니다. */
+  var PRESENCE_MIN_MS = 8000;
+  var lastPresenceAt = 0;
+
+  function syncPresence(force) {
+    if (state.mode !== 'live' || !NET.channel || !state.me) return;
+    var now = Date.now();
+    if (!force && now - lastPresenceAt < PRESENCE_MIN_MS) return;
+    var payload = presencePayload();
+    if (!payload) return;
+    lastPresenceAt = now;
+    NET.channel.track(payload).catch(function () { });
+  }
+
+  /* 위치·좌석·공부 시간은 broadcast 로 자주 보낸다 (presence 제한 회피) */
+  function publishMove() {
     if (state.mode !== 'live' || !NET.channel || !state.me) return;
     var payload = presencePayload();
-    if (payload) NET.channel.track(payload).catch(function () { });
+    if (!payload) return;
+    NET.channel.send({ type: 'broadcast', event: 'move', payload: payload });
   }
 
   function initLive() {
@@ -1236,6 +1295,11 @@
       channel
         .on('presence', { event: 'sync' }, onPresenceSync)
         .on('broadcast', { event: 'chat' }, function (msg) { onRemoteChat(msg.payload); })
+        .on('broadcast', { event: 'move' }, function (msg) {
+          var p = msg.payload || {};
+          if (!p.id || p.id === MY_ID) return;
+          if (applyRemoteState(p)) renderLeaderboard();
+        })
         .on('broadcast', { event: 'reaction' }, function (msg) {
           var p = msg.payload || {};
           if (!p.id || p.id === MY_ID) return;
@@ -1251,7 +1315,7 @@
         if (status === 'SUBSCRIBED') {
           NET.ready = true;
           setMode('live');
-          syncPresence();
+          syncPresence(true);
           bootChat();
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           if (state.mode === 'live') {
@@ -1278,48 +1342,64 @@
     toast(message);
   }
 
+  /* 서버에서 온 참가자 상태(하나)를 화면 상태에 반영한다. presence·broadcast 양쪽에서 쓴다. */
+  function applyRemoteState(meta) {
+    var id = meta && meta.id;
+    if (!id || id === MY_ID) return null;
+    var p = state.players[id];
+    var serverSeconds = Number(meta.seconds) || 0;
+    var ts = Number(meta.ts) || 0;
+    /* presence 는 8초에 한 번만 갱신되므로, 더 새로운 broadcast 로 받은 상태를
+       오래된 presence 상태가 덮어쓰지 않도록 시각을 비교한다. */
+    if (p && ts && p.ts && ts < p.ts) return p;
+    if (!p) {
+      p = {
+        id: id, name: meta.name || '친구', charId: meta.charId || (charDefs[0] && charDefs[0].id),
+        x: Number(meta.x) || 320, y: Number(meta.y) || 300,
+        tx: Number(meta.x) || 320, ty: Number(meta.y) || 300,
+        dir: meta.dir || 'down', sitting: !!meta.sitting, studying: !!meta.studying,
+        seatId: meta.seatId || null, seconds: serverSeconds, animT: 0, moving: false, ts: ts
+      };
+      state.players[id] = p;
+      if (p.seatId) {
+        var first = seatById(p.seatId);
+        if (first) first.occupant = id;
+      }
+      addSystem(p.name + '님이 입장했습니다');
+      return p;
+    }
+    p.tx = Number(meta.x) || p.x;
+    p.ty = Number(meta.y) || p.y;
+    if (ts) p.ts = ts;
+    p.dir = meta.dir || p.dir;
+    p.name = meta.name || p.name;
+    p.charId = meta.charId || p.charId;
+    p.seconds = Math.max(p.seconds, serverSeconds);
+    p.studying = !!meta.studying;
+    p.sitting = !!meta.sitting;
+
+    /* 자리 점유 상태 동기화 */
+    if (p.seatId && meta.seatId !== p.seatId) {
+      var old = seatById(p.seatId);
+      if (old && old.occupant === id) old.occupant = null;
+    }
+    p.seatId = meta.seatId || null;
+    if (p.seatId) {
+      var s = seatById(p.seatId);
+      if (s) s.occupant = id;
+    }
+    return p;
+  }
+
   function onPresenceSync() {
     if (!NET.channel) return;
     var st = NET.channel.presenceState();
     var seen = {};
     Object.keys(st).forEach(function (key) {
       (st[key] || []).forEach(function (meta) {
-        var id = meta.id;
-        if (!id || id === MY_ID) return;
-        seen[id] = 1;
-        var p = state.players[id];
-        var serverSeconds = Number(meta.seconds) || 0;
-        if (!p) {
-          p = {
-            id: id, name: meta.name || '친구', charId: meta.charId || (charDefs[0] && charDefs[0].id),
-            x: Number(meta.x) || 320, y: Number(meta.y) || 300,
-            tx: Number(meta.x) || 320, ty: Number(meta.y) || 300,
-            dir: meta.dir || 'down', sitting: !!meta.sitting, studying: !!meta.studying,
-            seatId: meta.seatId || null, seconds: serverSeconds, animT: 0, moving: false
-          };
-          state.players[id] = p;
-          addSystem(p.name + '님이 입장했습니다');
-        } else {
-          p.tx = Number(meta.x) || p.x;
-          p.ty = Number(meta.y) || p.y;
-          p.dir = meta.dir || p.dir;
-          p.name = meta.name || p.name;
-          p.charId = meta.charId || p.charId;
-          p.seconds = Math.max(p.seconds, serverSeconds);
-          p.studying = !!meta.studying;
-          p.sitting = !!meta.sitting;
-
-          /* 자리 점유 상태 동기화 */
-          if (p.seatId && meta.seatId !== p.seatId) {
-            var old = seatById(p.seatId);
-            if (old && old.occupant === id) old.occupant = null;
-          }
-          p.seatId = meta.seatId || null;
-          if (p.seatId) {
-            var s = seatById(p.seatId);
-            if (s) s.occupant = id;
-          }
-        }
+        if (!meta || !meta.id) return;
+        seen[meta.id] = 1;
+        if (meta.id !== MY_ID) applyRemoteState(meta);
       });
     });
 
@@ -1503,6 +1583,18 @@
     el.addEventListener('mousedown', function (ev) {
       if (ev.target === el && el.id !== 'entryModal') closeModal(el.id);
     });
+  });
+
+  /* 이름 입력: 지우기 · 상태 표시 (엔터는 위 '모달 버튼' 쪽에서 처리) */
+  $('nickname').addEventListener('input', function () { syncNameClear(); setNameHint(false); });
+  $('nicknameClear').addEventListener('click', function () {
+    var nick = $('nickname');
+    nick.value = '';
+    syncNameClear();
+    nick.focus();
+  });
+  $('entryClose').addEventListener('click', function () {
+    if (state.me) closeModal('entryModal');
   });
 
   /* =============================================================

@@ -68,6 +68,15 @@ create policy "att insert for all"
 
 -- 수정·삭제 정책은 만들지 않습니다. (기록은 덧붙이기만 가능)
 
+-- ---------- 3-1. 테이블 권한 ----------
+-- RLS 정책이 있어도 역할(anon)에 테이블 권한이 없으면
+-- 401 "permission denied for table ..." 가 납니다. 함께 열어 둡니다.
+grant usage on schema public to anon, authenticated;
+grant select, insert on public.chat_messages   to anon, authenticated;
+grant select, insert on public.attendance_logs to anon, authenticated;
+grant usage, select on sequence public.chat_messages_id_seq   to anon, authenticated;
+grant usage, select on sequence public.attendance_logs_id_seq to anon, authenticated;
+
 -- ---------- 4. Realtime ----------
 -- Broadcast/Presence 는 테이블 설정 없이 동작합니다.
 -- chat_messages 를 postgres_changes 로도 구독하고 싶다면 아래 주석을 해제하세요.

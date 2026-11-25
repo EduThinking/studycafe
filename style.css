@@ -597,6 +597,93 @@ kbd {
   color: #6d7488;
   margin-bottom: 5px;
 }
+
+/* ===== 입장·캐릭터 변경 모달 (이름은 항상 위에 고정) ===== */
+.entry-modal { width: min(468px, 100%); max-height: calc(100dvh - 32px); }
+.entry-head {
+  flex: none;
+  padding: 20px 22px 0;
+}
+.entry-head-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.entry-close {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #fbfaf4;
+  color: #6d7488;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+.entry-close:hover { background: #f2eddd; color: #353d52; }
+.entry-close[hidden] { display: none; }
+
+.name-field { margin-top: 12px; }
+.name-field label {
+  font-size: 11.5px;
+  color: #2b3452;
+}
+.name-field .label-note {
+  font-weight: 600;
+  color: #8a90a2;
+}
+.name-input-wrap { position: relative; }
+.name-input {
+  padding: 12px 40px 12px 13px;
+  font-size: 14px;
+  font-weight: 700;
+  border: 1.5px solid #d9cfa9;
+  background: #fffdf6;
+}
+.name-input:focus {
+  border-color: #e0b93f;
+  box-shadow: 0 0 0 3px rgba(224, 185, 63, .22);
+}
+.name-clear {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: #eee7d3;
+  color: #6d7488;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+.name-clear:hover { background: #e3d9bd; color: #353d52; }
+.name-clear[hidden] { display: none; }
+.name-hint {
+  margin-top: 5px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.name-hint.warn { color: #b4692b; font-weight: 700; }
+
+.entry-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 4px 22px 6px;
+  overflow-y: auto;
+}
+.entry-body .char-grid { margin-top: 10px; }
+.entry-foot {
+  flex: none;
+  padding: 10px 22px 16px;
+  border-top: 1px solid var(--line-soft);
+  background: var(--card);
+}
+.entry-foot .primary-btn { margin-top: 0; }
 .text-input {
   width: 100%;
   padding: 10px 12px;
@@ -851,6 +938,9 @@ kbd {
   .foot-mid { text-align: left; }
   .canvas-hint { font-size: 8.5px; bottom: 6px; }
   .modal-body { padding: 16px 16px 14px; }
+  .entry-head { padding: 16px 16px 0; }
+  .entry-body { padding: 2px 16px 6px; }
+  .entry-foot { padding: 9px 16px 14px; }
   .char-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
   .char-card canvas { width: 38px; height: 48px; }
   .char-card span { font-size: 8.5px; }
